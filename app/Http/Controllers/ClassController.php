@@ -4,44 +4,91 @@ namespace App\Http\Controllers;
 
 use App\Models\ClassRoom;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class ClassController extends Controller
 {
-    /**
-     * Menyimpan ruang kelas baru ke database.
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'study_program' => 'nullable|string|max:255',
-            'instructor_name' => 'required|string|max:255',
         ]);
 
-        // Kumpulan variasi warna gradient background card ala figma
-        $gradients = [
-            'from-blue-600 to-blue-700',
-            'from-indigo-600 to-indigo-700',
-            'from-purple-600 to-purple-700',
-            'from-emerald-600 to-emerald-700'
-        ];
+        do {
+            $code = Str::random(6);
+        } while (ClassRoom::where('code', $code)->exists());
 
-        // Memilih warna secara acak agar visual card bervariasi
-        $validated['banner_gradient'] = $gradients[array_rand($gradients)];
+        $gradients = ['from-blue-600 to-indigo-700', 'from-purple-600 to-pink-600', 'from-emerald-500 to-teal-700', 'from-amber-500 to-orange-600'];
+        $randomGradient = $gradients[array_rand($gradients)];
 
-        ClassRoom::create($validated);
+        ClassRoom::create([
+            'name' => $validated['name'],
+            'study_program' => $validated['study_program'],
+            'instructor_id' => auth()->id(),
+            'code' => $code,
+            'banner_gradient' => $randomGradient
+        ]);
 
-        return redirect()->back()->with('success', 'Kelas baru berhasil dibuat!');
+        return redirect()->route('dashboard.home')->with('success', 'Kelas baru berhasil dibuat!');
     }
 
-    /**
-     * Menampilkan halaman detail internal ruang kelas (Forum & Tugas Kelas).
-     */
+    public function join(Request $request)
+    {
+        $request->validate([
+            'code' => 'required|string|size:6',
+        ]);
+
+        $class = ClassRoom::where('code', $request->code)->first();
+
+        if (!$class) {
+            return back()->withErrors(['join_error' => 'Kode kelas tidak ditemukan.']);
+        }
+
+        if ($class->instructor_id === auth()->id()) {
+            return back()->withErrors(['join_error' => 'Anda adalah pengajar di kelas ini.']);
+        }
+
+        // Cek join menggunakan ID mentah untuk menghindari masalah penamaan tabel pivot
+        $alreadyJoined = \DB::table('class_user')
+                            ->where('class_id', $class->id)
+                            ->where('user_id', auth()->id())
+                            ->exists();
+
+        if ($alreadyJoined) {
+            return back()->withErrors(['join_error' => 'Anda sudah bergabung di kelas ini.']);
+        }
+
+        $class->students()->attach(auth()->id());
+
+        return redirect()->route('classes.show', $class->id)->with('success', 'Berhasil bergabung ke kelas!');
+    }
+
     public function show($id)
     {
-        // Eager loading relasi untuk mengoptimalkan query database (menghindari N+1 problem)
-        $class = ClassRoom::with(['announcements', 'tasks'])->findOrFail($id);
+        $user = auth()->user();
 
-        return view('pages.detail-kelas', compact('class'));
+        if (!$user) {
+            return redirect('/login');
+        }
+
+        $class = ClassRoom::with(['announcements', 'tasks', 'instructor', 'students'])->findOrFail($id);
+
+        $isInstructor = $class->instructor_id === $user->id;
+
+        // Menggunakan query DB mentah untuk mengecek keanggotaan agar terhindar dari ketidakcocokan pivot model
+        $isStudent = \DB::table('class_user')
+                        ->where('class_id', $class->id)
+                        ->where('user_id', $user->id)
+                        ->exists();
+
+        // Mengamankan pengecekan admin secara langsung ke string kolom database
+        $isAdmin = isset($user->role) && $user->role === 'admin';
+
+        if (!$isInstructor && !$isStudent && !$isAdmin) {
+            abort(403, 'Anda tidak memiliki akses ke kelas ini.');
+        }
+
+        return view('pages.detail-kelas', compact('class', 'isInstructor', 'isAdmin'));
     }
 }

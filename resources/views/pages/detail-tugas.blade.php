@@ -1,111 +1,97 @@
 @extends('layouts.app')
 
-@section('title', 'Detail Tugas')
-@section('page_name', 'Lembar Kerja')
+@section('title', $task->title)
+@section('page_name', 'Detail Tugas')
 
 @section('content')
-<section class="max-w-6xl mx-auto p-6 md:p-8 grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+<div class="max-w-4xl mx-auto p-6 space-y-6">
 
-    <div class="lg:col-span-2 bg-white p-6 border border-gray-100 rounded-2xl shadow-xs space-y-6">
-        <div class="flex items-start space-x-4 border-b border-gray-100 pb-4">
-            <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 text-2xl font-bold flex items-center justify-center flex-shrink-0">📋</div>
+    <div class="flex items-center space-x-3">
+        <a href="{{ route('classes.show', $task->class_room_id ?? $task->class_id ?? $task->classRoom->id) }}" class="text-xs font-bold text-gray-500 hover:text-blue-600 bg-white border border-gray-100 px-3 py-2 rounded-xl shadow-xs transition-all">➔ Kembali ke Kelas</a>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <div class="md:col-span-2 bg-white border border-gray-100 rounded-3xl p-6 shadow-xs space-y-4">
             <div>
                 <h1 class="text-xl font-black text-gray-900 tracking-tight">{{ $task->title }}</h1>
-                <p class="text-xs text-gray-400 mt-1 font-medium">
-                    {{ $task->classRoom->name }} &bull; Batas Waktu: {{ $task->deadline->translatedFormat('d F Y, H:i') }} WIB
-                </p>
+                <p class="text-[10px] text-gray-400 mt-1">Batas Akhir: {{ $task->deadline->translatedFormat('d F Y, H:i') }} WIB</p>
+            </div>
+            <div class="border-t border-gray-50 pt-4">
+                <p class="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap">{{ $task->description ?? 'Tidak ada instruksi tertulis khusus dari pengajar.' }}</p>
             </div>
         </div>
-        <div class="space-y-3 text-xs text-gray-600 leading-relaxed">
-            <p class="font-bold text-gray-800 text-sm mb-1">Instruksi Pokok Penugasan:</p>
-            <div class="bg-gray-50 p-4 rounded-xl text-gray-700 whitespace-pre-line font-medium">
-                {{ $task->description ?? 'Tidak ada instruksi deskripsi tertulis dari pengampu.' }}
-            </div>
-        </div>
-    </div>
 
-    <div class="lg:col-span-1 bg-white p-6 border border-gray-100 rounded-2xl shadow-xs space-y-4">
-        <div class="flex justify-between items-center border-b border-gray-50 pb-3">
-            <h3 class="font-black text-sm text-gray-900 tracking-tight">Status Tugas</h3>
-            <span class="text-[10px] font-bold tracking-wide {{ $task->status === 'completed' ? 'text-emerald-700 bg-emerald-50' : 'text-amber-700 bg-amber-50' }} px-2 py-0.5 rounded-md uppercase">
-                {{ $task->status === 'completed' ? 'Diserahkan' : 'Belum Selesai' }}
-            </span>
-        </div>
+        <div class="md:col-span-1 bg-white border border-gray-100 rounded-3xl p-5 shadow-xs h-fit space-y-4">
+            <h3 class="text-xs font-black uppercase tracking-wider text-gray-400">Tugas Anda</h3>
 
-        @if($errors->any())
-        <div class="p-3 bg-red-50 text-red-600 text-[11px] font-bold rounded-xl border border-red-100">
-            {{ $errors->first() }}
-        </div>
-        @endif
+            @if($mySubmission)
+                <div class="p-3.5 bg-emerald-50 border border-emerald-100 rounded-2xl space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[9px] font-bold text-emerald-700 bg-white px-2 py-0.5 rounded shadow-2xs">Diserahkan</span>
+                        @if(!is_null($mySubmission->grade))
+                            <span class="text-[10px] font-bold text-blue-700">Nilai: {{ $mySubmission->grade }}</span>
+                        @endif
+                    </div>
+                    <p class="text-[10px] text-gray-500">Dikirim pada: {{ $mySubmission->created_at->translatedFormat('d M Y, H:i') }} WIB</p>
 
-        @if($task->status !== 'completed')
-            <form action="{{ route('tasks.submit', $task->id) }}" method="POST" enctype="multipart/form-data" class="space-y-4">
-                @csrf
+                    <div class="border-t border-emerald-200/60 pt-2 space-y-1.5">
+                        <span class="block text-[9px] font-bold text-emerald-800 uppercase tracking-wider">Berkas Lampiran Anda:</span>
 
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Unggah Berkas Jawaban (Opsional)</label>
-                    <label class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-blue-400 cursor-pointer transition-colors group flex flex-col items-center justify-center bg-gray-50/50">
-                        <input type="file" name="file_assignment" id="file_assignment" class="hidden" onchange="displayFileName()">
-                        <div class="text-xl mb-1 group-hover:scale-110 transition-transform" id="upload-icon">📁</div>
-                        <p class="text-[11px] font-bold text-gray-700" id="file-label-text">Pilih dokumen atau berkas .zip</p>
-                        <p class="text-[9px] text-gray-400 mt-0.5" id="file-size-text">Maksimal ukuran file 20MB</p>
-                    </label>
+                        @if($mySubmission->file_path)
+                            <a href="{{ asset('storage/' . $mySubmission->file_path) }}" target="_blank" class="flex items-center space-x-2 text-[11px] text-emerald-700 hover:text-blue-600 font-medium transition-colors truncate bg-white/60 p-1.5 rounded-lg border border-emerald-100">
+                                <span>📁</span>
+                                <span class="truncate flex-1">Unduh/Lihat Berkas</span>
+                            </a>
+                        @endif
+
+                        @if($mySubmission->link_url)
+                            <a href="{{ $mySubmission->link_url }}" target="_blank" class="flex items-center space-x-2 text-[11px] text-emerald-700 hover:text-blue-600 font-medium transition-colors truncate bg-white/60 p-1.5 rounded-lg border border-emerald-100">
+                                <span>🔗</span>
+                                <span class="truncate flex-1">{{ $mySubmission->link_url }}</span>
+                            </a>
+                        @endif
+
+                        @if($mySubmission->notes)
+                            <div class="mt-2 bg-white/40 p-2 rounded-lg border border-emerald-100/50">
+                                <span class="block text-[8px] font-bold text-gray-400 uppercase">Catatan Anda:</span>
+                                <p class="text-[10px] text-gray-600 whitespace-pre-wrap leading-tight mt-0.5">{{ $mySubmission->notes }}</p>
+                            </div>
+                        @endif
+                    </div>
+
+                    @if($mySubmission->feedback)
+                        <div class="border-t border-emerald-200/60 pt-2 mt-1">
+                            <span class="block text-[9px] font-bold text-gray-400 uppercase">Catatan Evaluasi Dosen:</span>
+                            <p class="text-[10px] text-gray-600 italic leading-normal">"{{ $mySubmission->feedback }}"</p>
+                        </div>
+                    @endif
                 </div>
-
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Tautan Tugas / Repository URL (Opsional)</label>
-                    <input type="url" name="link_url" placeholder="https://github.com/... atau tautan Drive"
-                        class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-blue-600 placeholder:text-gray-300">
-                </div>
-
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-3 rounded-xl transition-all shadow-sm active:scale-95">
-                    Serahkan Pekerjaan Sekarang
-                </button>
-            </form>
-        @else
-            <div class="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-100 text-xs font-medium">
-                <p class="text-gray-400 text-[10px] uppercase font-bold tracking-wider">Lampiran Jawaban Anda:</p>
-
-                @if($task->currentUserSubmission && $task->currentUserSubmission->file_path)
-                    <div class="flex items-center space-x-2 text-gray-700 bg-white p-2.5 border border-gray-100 rounded-lg">
-                        <span>📄</span>
-                        <a href="{{ asset('storage/' . $task->currentUserSubmission->file_path) }}" target="_blank" class="text-blue-600 hover:underline truncate flex-1 font-bold">
-                            Lihat Berkas Dokumen Terlampir
-                        </a>
+            @else
+                @if($errors->has('upload_error'))
+                    <div class="p-3 bg-red-50 border border-red-100 rounded-xl text-[11px] font-bold text-red-600">
+                        ⚠️ {{ $errors->first('upload_error') }}
                     </div>
                 @endif
 
-                @if($task->currentUserSubmission && $task->currentUserSubmission->link_url)
-                    <div class="flex items-center space-x-2 text-gray-700 bg-white p-2.5 border border-gray-100 rounded-lg">
-                        <span>🔗</span>
-                        <a href="{{ $task->currentUserSubmission->link_url }}" target="_blank" class="text-blue-600 hover:underline truncate flex-1 font-bold">
-                            {{ $task->currentUserSubmission->link_url }}
-                        </a>
+                <form action="{{ route('submissions.store', $task->id) }}" method="POST" enctype="multipart/form-data" class="space-y-3">
+                    @csrf
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 mb-1">Link Tautan Tugas (Opsional)</label>
+                        <input type="url" name="link_url" placeholder="https://github.com/..." class="w-full border border-gray-200 rounded-xl p-2.5 text-xs focus:outline-none focus:border-blue-600 text-gray-700">
                     </div>
-                @endif
-            </div>
-
-            <button type="button" disabled class="w-full bg-gray-100 text-gray-400 text-xs font-bold py-3 rounded-xl cursor-not-allowed text-center">
-                Pekerjaan Berhasil Dikumpulkan ✓
-            </button>
-        @endif
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 mb-1">Unggah Berkas File (Opsional)</label>
+                        <input type="file" name="file_path" class="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 mb-1">Catatan Tambahan Jawaban</label>
+                        <textarea name="notes" rows="3" placeholder="Tulis pesan ringkas atau deskripsi pengerjaan tugas..." class="w-full border border-gray-200 rounded-xl p-2.5 text-xs focus:outline-none focus:border-blue-600 resize-none text-gray-700"></textarea>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-xs transition-colors shadow-sm active:scale-[0.98]">Kirim Tugas</button>
+                </form>
+            @endif
+        </div>
     </div>
-
-</section>
-
-<script>
-    function displayFileName() {
-        const fileInput = document.getElementById('file_assignment');
-        const labelText = document.getElementById('file-label-text');
-        const sizeText = document.getElementById('file-size-text');
-        const icon = document.getElementById('upload-icon');
-
-        if (fileInput.files.length > 0) {
-            labelText.innerText = fileInput.files[0].name;
-            labelText.classList.add('text-blue-600');
-            sizeText.innerText = "Berkas siap diunggah";
-            icon.innerText = "✅";
-        }
-    }
-</script>
+</div>
 @endsection

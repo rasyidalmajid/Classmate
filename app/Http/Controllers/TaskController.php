@@ -5,72 +5,86 @@ namespace App\Http\Controllers;
 use App\Models\ClassRoom;
 use App\Models\Task;
 use App\Models\Submission;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 
 class TaskController extends Controller
 {
     public function store(Request $request, ClassRoom $class)
     {
-        $validated = $request->validate([
+        $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'deadline' => 'required|date',
         ]);
 
         $class->tasks()->create([
-            'title' => $validated['title'],
-            'description' => $validated['description'],
-            'deadline' => $validated['deadline'],
+            'title' => $request->title,
+            'description' => $request->description,
+            'deadline' => $request->deadline,
             'status' => 'assigned',
         ]);
 
         return redirect()->route('classes.show', $class->id)->with('success', 'Tugas baru berhasil dirilis!');
     }
 
-    public function show(Task $task)
+public function show($id)
     {
-        // Muat data kelas beserta data submission milik user yang sedang login
-        $task->load(['classRoom', 'currentUserSubmission']);
+        $user = auth()->user();
+        if (!$user) {
+            return redirect('/login');
+        }
 
-        return view('pages.detail-tugas', compact('task'));
+        // Load data tugas beserta relasi kelas, dosen, dan seluruh mahasiswa di kelas tersebut
+        $task = Task::with(['classRoom.instructor', 'classRoom.students'])->findOrFail($id);
+
+        // Menentukan role user saat ini
+        $isInstructor = $task->classRoom->instructor_id === $user->id;
+        $isAdmin = isset($user->role) && $user->role === 'admin';
+
+        // JIKA PENGAJAR / ADMIN: Arahkan ke halaman Daftar Pengumpulan Tugas
+        if ($isInstructor || $isAdmin) {
+            // Ambil semua submission tugas ini beserta data user muridnya
+            $submissions = $task->submissions()->with('user')->get();
+
+            // Cari list ID murid yang sudah mengumpulkan berkas
+            $submittedUserIds = $submissions->pluck('user_id')->toArray();
+
+            // Filter mahasiswa yang belum mengumpulkan tugas
+            $unsubmittedStudents = $task->classRoom->students->whereNotIn('id', $submittedUserIds);
+
+            return view('pages.pengajar-daftar-pengumpulan', compact('task', 'submissions', 'unsubmittedStudents'));
+        }
+
+        // JIKA MURID: Langsung tampilkan halaman detail tugas asli (Formulir Pengumpulan)
+        $mySubmission = $task->submissions()->where('user_id', $user->id)->first();
+
+        return view('pages.detail-tugas', compact('task', 'mySubmission'));
     }
 
-    public function submit(Request $request, Task $task)
+    /**
+     * Menampilkan detail pengumpulan berkas milik satu murid tertentu (Khusus Pengajar/Admin)
+     */
+    public function showSubmission($task_id, $submission_id)
     {
-        // Validasi input: File opsional (maks 20MB), Link opsional, tapi salah satu harus diisi
-        $request->validate([
-            'file_assignment' => 'nullable|file|max:20480',
-            'link_url' => 'nullable|url|max:255',
-        ], [
-            'file_assignment.max' => 'Ukuran berkas terlalu besar, maksimal 20MB.',
-            'link_url.url' => 'Format tautan URL tidak valid.'
-        ]);
-
-        if (!$request->hasFile('file_assignment') && !$request->filled('link_url')) {
-            return back()->withErrors(['error_submission' => 'Harap lampirkan berkas atau masukkan tautan tugas terlebih dahulu.']);
+        $user = auth()->user();
+        if (!$user) {
+            return redirect('/login');
         }
 
-        $filePath = null;
+        $task = Task::with('classRoom')->findOrFail($task_id);
 
-        // Jika user mengunggah file, simpan ke folder storage/app/public/submissions
-        if ($request->hasFile('file_assignment')) {
-            $file = $request->file('file_assignment');
-            $filePath = $file->store('submissions', 'public');
+        // Proteksi keamanan / Gatekeeper multi-role
+        $isInstructor = $task->classRoom->instructor_id === $user->id;
+        $isAdmin = isset($user->role) && $user->role === 'admin';
+
+        if (!$isInstructor && !$isAdmin) {
+            abort(403, 'Anda tidak memiliki hak akses untuk melihat lembar kerja mahasiswa ini.');
         }
 
-        // Catat data ke tabel submissions
-        Submission::create([
-            'task_id' => $task->id,
-            'user_id' => Auth::id(),
-            'file_path' => $filePath,
-            'link_url' => $request->input('link_url'),
-        ]);
+        // Ambil data pengumpulan spesifik milik murid tersebut
+        $submission = Submission::with('user')->findOrFail($submission_id);
 
-        // Perbarui status tugas menjadi completed
-        $task->update(['status' => 'completed']);
-
-        return redirect()->route('tugas.index')->with('success', 'Tugas berhasil dikumpulkan!');
+        return view('pages.pengajar-detail-submission', compact('task', 'submission'));
     }
 }

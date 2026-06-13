@@ -12,28 +12,25 @@ class ClassRoom extends Model
     // Menentukan nama tabel di database secara eksplisit karena berbeda dengan konvensi jamak (plural) Laravel
     protected $table = 'classes';
 
-    protected $fillable = [
-        'name',
-        'study_program',
-        'instructor_name',
-        'banner_gradient'
-    ];
+    protected $fillable = ['name', 'study_program', 'instructor_id', 'code', 'banner_gradient'];
 
-    /**
-     * Relasi One-to-Many: Sebuah kelas memiliki banyak pengumuman di forum.
-     * Mengurutkan pengumuman dari yang paling baru diterbitkan (latest).
-     */
-    public function announcements()
+    public function instructor()
     {
-        return $this->hasMany(Announcement::class, 'class_id')->latest();
+        return $this->belongsTo(User::class, 'instructor_id');
     }
 
-    /**
-     * Relasi One-to-Many: Sebuah kelas memiliki banyak tugas kuliah.
-     * Mengurutkan tugas dari yang paling baru ditambahkan.
-     */
+    public function students()
+    {
+        return $this->belongsToMany(User::class, 'class_user', 'class_id', 'user_id');
+    }
+
     public function tasks()
     {
-        return $this->hasMany(Task::class, 'class_id')->latest();
+        return $this->hasMany(Task::class, 'class_id');
+    }
+
+    public function announcements()
+    {
+        return $this->hasMany(Announcement::class, 'class_id');
     }
 }
