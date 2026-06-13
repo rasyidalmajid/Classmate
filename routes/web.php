@@ -1,7 +1,34 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ClassController;
+use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\TaskController;
 
-Route::get('/', function () {
-    return view('welcome');
+Route::middleware(['guest'])->group(function () {
+    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [AuthController::class, 'login']);
+
+    Route::get('/signup', function() {
+        return redirect()->route('login')->with('open_signup', true);
+    })->name('signup');
+    Route::post('/signup', [AuthController::class, 'signup']);
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    Route::get('/', [DashboardController::class, 'home'])->name('dashboard.home');
+    Route::get('/tugas', [DashboardController::class, 'allTasks'])->name('tugas.index');
+
+    Route::post('/classes', [ClassController::class, 'store'])->name('classes.store');
+    Route::get('/classes/{id}', [ClassController::class, 'show'])->name('classes.show');
+
+    Route::post('/classes/{class}/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
+
+    Route::post('/classes/{class}/tasks', [TaskController::class, 'store'])->name('tasks.store');
+    Route::get('/tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
+    Route::post('/tasks/{task}/submit', [TaskController::class, 'submit'])->name('tasks.submit');
 });
