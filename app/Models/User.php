@@ -40,4 +40,21 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed', // Otomatis mengamankan password dengan Bcrypt di Laravel modern
     ];
+
+    public function isAdmin()
+    {
+        return $this->role === 'admin';
+    }
+
+    // Kelas yang dibuat oleh user ini (Sebagai Pengajar)
+    public function managedClasses()
+    {
+        return $this->hasMany(ClassRoom::class, 'instructor_id');
+    }
+
+    // Kelas yang diikuti oleh user ini (Sebagai Murid)
+    public function joinedClasses()
+    {
+        return $this->belongsToMany(ClassRoom::class, 'class_user', 'user_id', 'class_id');
+    }
 }

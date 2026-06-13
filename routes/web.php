@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\SubmissionController;
 
 Route::middleware(['guest'])->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -23,6 +24,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/', [DashboardController::class, 'home'])->name('dashboard.home');
     Route::get('/tugas', [DashboardController::class, 'allTasks'])->name('tugas.index');
 
+    Route::post('/classes/join', [ClassController::class, 'join'])->name('classes.join');
+    Route::get('/tasks/{task}/review/{student}', [TaskController::class, 'viewStudentSubmission'])->name('tasks.review');
+
     Route::post('/classes', [ClassController::class, 'store'])->name('classes.store');
     Route::get('/classes/{id}', [ClassController::class, 'show'])->name('classes.show');
 
@@ -31,4 +35,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/classes/{class}/tasks', [TaskController::class, 'store'])->name('tasks.store');
     Route::get('/tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
     Route::post('/tasks/{task}/submit', [TaskController::class, 'submit'])->name('tasks.submit');
+
+    Route::get('/tasks/{task_id}/submissions/{submission_id}', [TaskController::class, 'showSubmission'])->name('tasks.submissions.show');
+
+    Route::post('/submissions/{id}/grade', [SubmissionController::class, 'grade'])->name('submissions.grade');
+
+    Route::post('/tasks/{id}/submissions', [SubmissionController::class, 'store'])->name('submissions.store');
 });
