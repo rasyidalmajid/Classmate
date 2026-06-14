@@ -3,6 +3,9 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\adminUserController;
+use App\Http\Controllers\Admin\AdminClassroomController;
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\TaskController;
@@ -41,4 +44,19 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/submissions/{id}/grade', [SubmissionController::class, 'grade'])->name('submissions.grade');
 
     Route::post('/tasks/{id}/submissions', [SubmissionController::class, 'store'])->name('submissions.store');
+});
+
+
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+
+    // Dashboard Admin
+    Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+    // Manajemen User
+    Route::resource('users', AdminUserController::class)->except(['create', 'edit']); // Menggunakan Modal untuk create/edit
+
+    // Manajemen Kelas
+    Route::resource('classes', AdminClassroomController::class)->except(['create', 'edit']);
+    Route::post('classes/{class}/add-member', [AdminClassroomController::class, 'addMember'])->name('classes.addMember');
+    Route::delete('classes/{class}/remove-member/{user}', [AdminClassroomController::class, 'removeMember'])->name('classes.removeMember');
 });

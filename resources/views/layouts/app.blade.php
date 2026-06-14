@@ -63,7 +63,7 @@
         </div>
     </header>
 
-    <aside id="sidebar-nav" class="layout-transition fixed left-0 top-16 w-64 h-[calc(100vh-4rem)] bg-white border-r border-gray-100 p-4 z-40 overflow-y-auto transform -translate-x-full md:translate-x-0">
+    <aside id="sidebar-nav" class="layout-transition fixed left-0 top-16 w-64 h-[calc(100vh-4rem)] bg-white border-r border-gray-100 p-4 z-40 overflow-y-auto overflow-x-hidden transform -translate-x-full md:translate-x-0">
         <nav class="space-y-1">
             <a href="{{ route('dashboard.home') }}" class="flex items-center space-x-3 px-4 py-3 {{ Request::routeIs('dashboard.home') ? 'bg-blue-50 text-blue-600 font-bold' : 'text-gray-500 hover:bg-gray-50' }} rounded-xl transition-all">
                 <span class="text-xl">🏠</span><span class="sidebar-label text-sm whitespace-nowrap">Beranda</span>
@@ -117,14 +117,21 @@
         function toggleSidebarLayout() {
             const sidebar = document.getElementById('sidebar-nav');
             const mainViewport = document.getElementById('main-viewport');
+
             if (window.innerWidth < 768) {
-                sidebar.classList.toggle('translate-x-0');
+                // Tampilan Mobile: Buka dan Tutup sidebar (geser ke kiri/kanan)
                 sidebar.classList.toggle('-translate-x-full');
+                sidebar.classList.toggle('translate-x-0');
             } else {
-                sidebar.classList.toggle('md:w-20');
-                sidebar.classList.toggle('md:w-64');
-                mainViewport.classList.toggle('md:ml-20');
+                // Tampilan Desktop: Kecilkan dan Besarkan sidebar
+                sidebar.classList.toggle('w-64');
+                sidebar.classList.toggle('w-20');
+
+                // Sesuaikan margin main konten
                 mainViewport.classList.toggle('md:ml-64');
+                mainViewport.classList.toggle('md:ml-20');
+
+                // Sembunyikan label text pada menu sidebar
                 document.querySelectorAll('.sidebar-label').forEach(l => l.classList.toggle('hidden'));
             }
         }
